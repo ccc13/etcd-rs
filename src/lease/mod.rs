@@ -133,7 +133,8 @@ impl LeaseKeepAliveTunnel {
                         return;
                     }
                     Err(e) => {
-                        resp_sender.send(Err(From::from(e))).unwrap();
+                        let _ = resp_sender.send(Err(From::from(e)));
+                        return;
                     }
                 };
             }
