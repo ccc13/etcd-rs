@@ -125,7 +125,9 @@ impl LeaseKeepAliveTunnel {
                 };
                 match resp {
                     Ok(Some(resp)) => {
-                        resp_sender.send(Ok(From::from(resp))).unwrap();
+                        if resp_sender.send(Ok(From::from(resp))).is_err() {
+                            return;
+                        }
                     }
                     Ok(None) => {
                         return;
