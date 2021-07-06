@@ -89,14 +89,14 @@ impl WatchTunnel {
                 res = client.watch(request).fuse() => {
                     match res {
                         Err(e) => {
-                            resp_sender.send(Err(From::from(e))).unwrap();
+                            let _ = resp_sender.send(Err(From::from(e)));
                             return;
                         },
                         Ok(i) => i.into_inner(),
                     }
                 },
                 _ = shutdown_rx => {
-                    resp_sender.send(Ok(None)).unwrap();
+                    let _ = resp_sender.send(Ok(None));
                     return;
                 },
             };
@@ -108,18 +108,20 @@ impl WatchTunnel {
                 };
                 match resp {
                     Ok(Some(resp)) => {
-                        resp_sender.send(Ok(Some(resp.into()))).unwrap();
+                        if resp_sender.send(Ok(Some(resp.into()))).is_err() {
+                            return;
+                        }
                     }
                     Ok(None) => {
                         break;
                     }
                     Err(e) => {
-                        resp_sender.send(Err(e.into())).unwrap();
+                        let _ = resp_sender.send(Err(e.into()));
                         return;
                     }
                 };
             }
-            resp_sender.send(Ok(None)).unwrap();
+            let _ = resp_sender.send(Ok(None));
         });
 
         Self {

@@ -106,7 +106,15 @@ impl LeaseKeepAliveTunnel {
         tokio::spawn(async move {
             let mut shutdown_rx = shutdown_rx.fuse();
             let mut inbound = futures::select! {
-                res = client.lease_keep_alive(request).fuse() => res.unwrap().into_inner(),
+                res = client.lease_keep_alive(request).fuse() => {
+                    match res {
+                        Ok(_res) => _res.into_inner(),
+                        Err(e) => {
+                            let _ = resp_sender.send(Err(e.into()));
+                            return;
+                        }
+                    }
+                },
                 _ = shutdown_rx => { return; }
             };
 
@@ -117,13 +125,16 @@ impl LeaseKeepAliveTunnel {
                 };
                 match resp {
                     Ok(Some(resp)) => {
-                        resp_sender.send(Ok(From::from(resp))).unwrap();
+                        if resp_sender.send(Ok(From::from(resp))).is_err() {
+                            return;
+                        }
                     }
                     Ok(None) => {
                         return;
                     }
                     Err(e) => {
-                        resp_sender.send(Err(From::from(e))).unwrap();
+                        let _ = resp_sender.send(Err(From::from(e)));
+                        return;
                     }
                 };
             }
